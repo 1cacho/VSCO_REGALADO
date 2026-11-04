@@ -23,17 +23,24 @@ extern "C" void app_main()
 
 
         
-        if (termometer.askTemperature())
+        // 1. Solo pide la temperatura si NO estamos esperando una conversión
+        if (!waiting_temp)
         {
-            termometer_time_ms = current_time_ms;
+            if (termometer.askTemperature())
+            {
+                termometer_time_ms = current_time_ms;
+                waiting_temp = true; // Bloquea nuevas peticiones mientras convierte
+            }
         }
-        if (80 < (current_time_ms - termometer_time_ms))
+        // 2. Cuando ya pasaron los 800 ms desde la petición, lee el resultado
+        else if (800 < (current_time_ms - termometer_time_ms))
         {
             uint64_t temp_escalada = termometer.readTemperature();
             if (temp_escalada != 0xFFFFFFFFFFFFFFFF)
             {
                 temp_real = (float)temp_escalada / 10000.0f;
             }
+            waiting_temp = false; // Libera el candado para pedir la siguiente lectura
         }
         if (poll_frequency < (current_time_ms - send_time_ms))
         {
@@ -55,9 +62,14 @@ extern "C" void app_main()
                 new_state = false;
                 rgb.setColor(255, 255, 0);
                 vsco.stop();
-
-                sprintf(txBuffer, "Awaiting for sample \n %s", txMeasurements);
+                if (!airok) {
+                //print instruction to press yellow button, no air reference yet
+                }
+                else {
+                //print instruction to press green button to start measurement
+                }
             }
+
             if (push_clicked)
             {
                 current_state = PLACEMENT;
@@ -65,7 +77,7 @@ extern "C" void app_main()
             }
             else if(cal_clicked){
                 calibrando = true;
-                current_state = PLACEMENT;
+                current_state = AIR;
                 new_state = true;
             }
             break;
@@ -73,46 +85,60 @@ extern "C" void app_main()
         case PLACEMENT:
             if (new_state) {
                 new_state = false;
-                sprintf(txBuffer, "Ensure sample placement \n %s", txMeasurements);
+                //sprintf(txBuffer, "Ensure sample placement \n %s", txMeasurements);
 
             }
             rgb.blink(255,255,0, 500000);
             if (push_clicked) {
                 new_state = true;
                 // La referencia de aire solo se mide al calibrar o si todavia no existe
-                if (calibrando || !airok) {
-                    current_state = AIR;
-                } else {
-                    current_state = DOWN;
-                }
+                current_state = DOWN;
             }
         break;
 
         case AIR:
-            if (new_state) {
-                new_state = false;
-                //reference measure air 
-                prev_time_ms = current_time_ms;
-            }   
+        if (new_state) {
+            new_state = false;
+            //reference measure air WAIT
+            stepper_time_ms = stepper.move(115, STEPPER_PPR, down);
+            prev_time_ms = current_time_ms;
+        }
+        if (stepper_time_ms < (current_time_ms - prev_time_ms)) {
             vsco.update();
-            if (10000 < (current_time_ms - prev_time_ms)) {
+            if ((10000 + stepper_time_ms) < (current_time_ms - prev_time_ms)){
                 min = vsco.vscoMin();
                 airok= true;
-                new_state = true;
-                current_state = DOWN;
                 vsco.stop();
+                new_state = true;
+                current_state = UP_AIR;
             }
+        }
         break;
+
+        case UP_AIR:
+        if (new_state) {
+            new_state = false;
+            //ascending, wait
+            stepper_time_ms = stepper.move(115, STEPPER_PPR, up);
+            prev_time_ms = current_time_ms;
+        }
+        if (stepper_time_ms < (current_time_ms - prev_time_ms)) {
+            current_state = PLACEMENT;
+            new_state = true;
+        }
+        break;
+
         case DOWN:
         if (new_state) {
             new_state = false;
             //printf(txBuffer, "Lowering \n %s", txMeasurements);
             //color.blink(rgb_out);
-            stepper_time_ms = stepper.move(150, STEPPER_PPR, down);
+            stepper_time_ms = stepper.move(115, STEPPER_PPR, down);
             prev_time_ms = current_time_ms;
             }
         if (stepper_time_ms < (current_time_ms - prev_time_ms)) {
             rgb.setColor(0, 255, 0);
+            //make sure to center the sample
             if (push_clicked) {
                 new_state = true;
                 current_state = STIR;
@@ -129,7 +155,7 @@ extern "C" void app_main()
         }
         rgb.blink(255,0,0,500000);
         vsco.revolvervsco();
-        if (30000 < (current_time_ms - prev_time_ms)) {
+        if (10000 < (current_time_ms - prev_time_ms)) {
             vsco.stop();
             current_state = MEASURE;
             new_state = true;
@@ -173,7 +199,7 @@ extern "C" void app_main()
         case UP:
         if (new_state) {
             new_state = false;
-            stepper_time_ms = stepper.move (150, STEPPER_PPR, up);
+            stepper_time_ms = stepper.move (115, STEPPER_PPR, up);
             prev_time_ms = current_time_ms;
             //remove sample, elevating viscosimeter print
         }
@@ -193,7 +219,7 @@ extern "C" void app_main()
         //print press when wash station ready
         }
         if (push_clicked&& !clean_en) {
-            stepper_time_ms = stepper.move(160, STEPPER_PPR, down);
+            stepper_time_ms = stepper.move(115, STEPPER_PPR, down);
             prev_time_ms = current_time_ms;
             clean_en = true;
             // Lowering...
@@ -213,7 +239,7 @@ extern "C" void app_main()
                 //print washing and sec variable
             }
 
-            if (60 <= sec) {
+            if (30 <= sec) {
                 vsco.stop();
                 timer.stopPeriodic();      
                 current_state = UP_CLEAN;  
@@ -229,7 +255,7 @@ extern "C" void app_main()
         if (new_state) {
             new_state = false;
             //ascending print
-            stepper_time_ms = stepper.move(160, STEPPER_PPR, up);
+            stepper_time_ms = stepper.move(115, STEPPER_PPR, up);
             prev_time_ms = current_time_ms;
         }
         if (stepper_time_ms < (current_time_ms - prev_time_ms)) {
@@ -250,7 +276,7 @@ extern "C" void app_main()
             sec ++;
             //print timer
         }
-        if (120 <= sec) {
+        if (20 <= sec) {
             fan.stop();
             current_state = RESTART;
             new_state = true;

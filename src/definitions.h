@@ -37,6 +37,7 @@ TERMOMETER termometer;
 #define TERMOMETER_TIME_CONSTANT_MS 800
 uint64_t termometer_time_ms = 0;
 float temp_real;
+bool waiting_temp;
 
 
 
@@ -123,6 +124,7 @@ enum STATE {
     IDLE,
     PLACEMENT,
     AIR,
+    UP_AIR,
     DOWN, 
     STIR,
     MEASURE,
@@ -148,6 +150,7 @@ const char* const STATE_NAMES[] = {
     "IDLE",
     "PLACEMENT",
     "AIR",
+    "UP_AIR",
     "DOWN",
     "STIR",
     "MEASURE",

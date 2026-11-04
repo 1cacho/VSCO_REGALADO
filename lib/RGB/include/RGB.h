@@ -18,6 +18,7 @@ public:
 private:
     SimplePWM pwm[3]; //* delaracion de objetos PWM
     int _last, _current;
+    bool _on;
 };
 
 #endif // __RGB_H_

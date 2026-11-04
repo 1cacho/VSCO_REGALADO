@@ -112,7 +112,7 @@ void viscosimeter::lavarvsco(){
 
 void viscosimeter::revolvervsco(){
     _running = true;
-    _PI.setRef(160.0f);
+    _PI.setRef(125.0f);
     _enc.update();
     float rpm = _enc.getRPM(RPMtype::FILTERED);
     float u = _PI.calculate(rpm);

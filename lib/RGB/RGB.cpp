@@ -39,9 +39,13 @@ void RGB::blink(uint32_t colorCode, int dt_us = 0.5e6)
      _current = esp_timer_get_time();
     if(_current - _last > dt_us){
         _last = _current;
-        this->setColor(r,g,b);
-    } else {
-        this->setColor(0, 0, 0);
-    }
 
+        if(_on){
+            this->setColor(0, 0, 0);
+            _on = false;
+        } else {
+            this->setColor(r,g,b);
+            _on = true;
+    }
+    }
 }
