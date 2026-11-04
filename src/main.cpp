@@ -20,8 +20,7 @@ extern "C" void app_main()
     while (true)
     {
         current_time_ms = esp_timer_get_time() / 1000;
-        bool push_clicked = push.interruptAvailable();
-        bool cal_clicked  = calpush.interruptAvailable();
+
 
 
         
@@ -38,14 +37,16 @@ extern "C" void app_main()
             }
         }
         if (poll_frequency < (current_time_ms - send_time_ms))
-        {       
+        {
+        bool push_clicked = push.interruptAvailable();
+        bool cal_clicked  = calpush.interruptAvailable();
         send_time_ms = current_time_ms;
         rpm = vsco.getRPM();
         corrinteg = vsco.getIntegral();
 
         printf("%s, Temp: %.1f, RPM: %.1f, Visc: %.2f, Int: %.2f\n",
         STATE_NAMES[current_state], temp_real, rpm, meas, corrinteg);
-        }
+        
         switch (current_state)
         {
 
@@ -53,10 +54,7 @@ extern "C" void app_main()
             if (new_state)
             {
                 new_state = false;
-                rgb_out[R] = 1048576;
-                rgb_out[G] = 1048576;
-                rgb_out[B] = 0;
-                //color.display(rgb_out);
+                rgb.setColor(255, 255, 0);
                 vsco.stop();
 
                 sprintf(txBuffer, "Awaiting for sample \n %s", txMeasurements);
@@ -77,7 +75,7 @@ extern "C" void app_main()
             if (new_state) {
                 new_state = false;
                 sprintf(txBuffer, "Ensure sample placement \n %s", txMeasurements);
-                //color.blink(rgb_out);
+                rgb.blink(255,255,0, 500000);
             }
             if (push_clicked) {
                 new_state = true;
@@ -114,9 +112,7 @@ extern "C" void app_main()
             prev_time_ms = current_time_ms;
             }
         if (stepper_time_ms < (current_time_ms - prev_time_ms)) {
-            rgb_out[R] = 0;
-            rgb_out [G] = 1048576;
-            rgb_out [B] = 0;
+            rgb.setColor(0, 255, 0);
             if (push_clicked) {
                 new_state = true;
                 current_state = STIR;
@@ -129,10 +125,7 @@ extern "C" void app_main()
         if (new_state) {
             new_state = false;
             //print Mixing sample
-            rgb_out[R] = 1048576;
-            rgb_out [G] = 0;
-            rgb_out [B] = 0;
-            //color.blink(rgb_out);
+            rgb.blink(255,0,0,500000);
             prev_time_ms = current_time_ms;
         }
         vsco.revolvervsco();
@@ -167,10 +160,7 @@ extern "C" void app_main()
         case DEPLOYMENT:
         if (new_state) {
             new_state = false;
-            rgb_out[R] = 0;
-            rgb_out [G] = 1048576;
-            rgb_out [B] = 0;
-            //color.display (rgb_out);
+            rgb.setColor(0,255,0);
             //measurement ready print 
             prev_time_ms = current_time_ms;
         }
@@ -192,10 +182,7 @@ extern "C" void app_main()
             if ((stepper_time_ms + 5000) < (current_time_ms - prev_time_ms)) {
                 current_state = CLEANING;
                 new_state = true;
-                rgb_out[R] = 0;
-                rgb_out [G] = 0;
-                rgb_out [B] = 0;
-                //color.display (rgb_out);
+                rgb.setColor(0,0,0);
             }
         }
         break;
@@ -286,7 +273,7 @@ extern "C" void app_main()
 
         }
 
-        vTaskDelayUntil(&last, pdMS_TO_TICKS(sampletime/1000));   // 20000/1000 = 20 ms
+        }
 
     }
 }

@@ -74,7 +74,6 @@ COLORSENSOR color;
 //rgb
 uint8_t RGB_PINS [3] = {22, 23, 25};
 uint8_t RGB_CHANNELS[3] = {4, 5, 6};
-uint32_t rgb_out[3] = {0,0,0};
 RGB rgb;
 TimerConfig _timer_config_rgb;
 
@@ -102,6 +101,7 @@ void IRAM_ATTR onSegundoCallback(void* arg) {
 #define Ki 2.6607f
 #define T1m 10000000.0f
 #define Tlavado 9000000.0f
+viscosimeter vsco;
 
 float u =0;
 float corrinteg = 0;
@@ -169,6 +169,4 @@ uint64_t prev_time_ms = 0;
 
 
 
-
-viscosimeter vsco;
 
