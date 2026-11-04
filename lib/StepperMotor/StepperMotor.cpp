@@ -29,7 +29,7 @@ uint64_t STEPPERMOTOR::move(uint16_t distance, uint16_t ppr, STEPPER_DIR directi
     dir.set(direction);
 
 
-    uint32_t total_steps = (ppr / 8) * distance;
+    uint32_t total_steps = (ppr / 6.1) * distance;
 
     uint64_t motor_time_ms = ((uint64_t)total_steps * 1000) / PWM_FREQ;
 

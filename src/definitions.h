@@ -137,6 +137,22 @@ enum STATE {
     DOWN*/
 };
 
+// Nombres para imprimir el estado, deben ir en el mismo orden que el enum STATE
+const char* const STATE_NAMES[] = {
+    "IDLE",
+    "PLACEMENT",
+    "AIR",
+    "DOWN",
+    "STIR",
+    "MEASURE",
+    "DEPLOYMENT",
+    "UP",
+    "CLEANING",
+    "UP_CLEAN",
+    "DRYING",
+    "RESTART"
+};
+
 
 STATE current_state = IDLE;
 bool new_state = true;
