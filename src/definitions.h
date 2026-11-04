@@ -17,6 +17,7 @@
 #include "Encoder.h"
 #include "Control.h"
 #include "Viscosimeter.h"
+#include "RGB.h"
 
 
 #define poll_frequency 200
@@ -69,9 +70,13 @@ COLORSENSOR color;
 #define S2_PIN 16
 #define S3_PIN 17
 #define COLOR_PIN 36
+
+//rgb
 uint8_t RGB_PINS [3] = {22, 23, 25};
 uint8_t RGB_CHANNELS[3] = {4, 5, 6};
 uint32_t rgb_out[3] = {0,0,0};
+RGB rgb;
+TimerConfig _timer_config_rgb;
 
 //fan
 DCMOTOR fan;

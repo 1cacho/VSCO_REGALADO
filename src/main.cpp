@@ -13,6 +13,7 @@ extern "C" void app_main()
     push.addInterrupt(GPIO_INTR_POSEDGE, onPushCallback, 200000);
     calpush.setup(CAL_PIN, GPIO_MODE_INPUT, GPIO_PULLUP_ONLY);
     calpush.addInterrupt(GPIO_INTR_NEGEDGE, onCalCallback, 200000);
+    rgb.setUp(RGB_PINS, RGB_CHANNELS,  &_timer_config_rgb, 0);
 
     vsco.setup(50, EncoderA, EncoderB, Enable, LPWM, RPWM, controller::PI, discretizationtype::Tustin, Kp, Ki, 0.0f, 0.0f, RefRPM);
     TickType_t last = xTaskGetTickCount();
