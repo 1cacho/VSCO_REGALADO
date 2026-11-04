@@ -43,8 +43,8 @@ extern "C" void app_main()
         rpm = vsco.getRPM();
         corrinteg = vsco.getIntegral();
 
-        printf("%d, Temp: %.1f, RPM: %.1f, Visc: %.2f, Int: %.2f\n",
-        current_state, temp_real, rpm, meas, corrinteg);
+        printf("%s, Temp: %.1f, RPM: %.1f, Visc: %.2f, Int: %.2f\n",
+        STATE_NAMES[current_state], temp_real, rpm, meas, corrinteg);
         }
         switch (current_state)
         {
@@ -81,7 +81,12 @@ extern "C" void app_main()
             }
             if (push_clicked) {
                 new_state = true;
-                current_state = AIR;
+                // La referencia de aire solo se mide al calibrar o si todavia no existe
+                if (calibrando || !airok) {
+                    current_state = AIR;
+                } else {
+                    current_state = DOWN;
+                }
             }
         break;
 
@@ -269,11 +274,10 @@ extern "C" void app_main()
 
         case RESTART:
         if (new_state) {
-            min = 0;
+            // min y airok se conservan para no repetir la referencia de aire
             calibrando = false;
             meas = 0;
             rpm = 0.0f;
-            airok = false;
             new_state = true;
             current_state = IDLE;
             prev_time_ms  = 0;
