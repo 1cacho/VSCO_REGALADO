@@ -19,19 +19,21 @@
 #include "Viscosimeter.h"
 
 
+#define poll_frequency 200
 
 //nema 
 STEPPERMOTOR stepper;
 #define STEPPER_DIR_PIN 32
 #define STEPPER_PUL_PIN 33
 #define STEPPER_CHANNEL 1
+
 uint64_t stepper_time_ms = 0;
 
 
 //termometer 
 TERMOMETER termometer;
 #define TERMOMETER_PIN 14
-#define TERMOMETER_TIME_CONSTANT_MS 80
+#define TERMOMETER_TIME_CONSTANT_MS 800
 uint64_t termometer_time_ms = 0;
 float temp_real;
 
@@ -48,13 +50,19 @@ uint64_t send_time_ms = 0;
 #define SEND_TIME_CONSTANT 50;
 
 //joystick 
-SimpleGPIO js_up, js_down, push;
+SimpleGPIO js_up, js_down, push, calpush;
+#define CAL_PIN 5
 #define JS_PIN_UP 34
 #define JS_PIN_DOWN  35
 #define PUSH_PIN 4
+bool calibrando = false;
+void IRAM_ATTR onCalCallback(void* arg) {
+    calpush.setInterruptFlag();
+}
 void IRAM_ATTR onPushCallback(void* arg) {
     push.setInterruptFlag();
 }
+
 
 //color sensor 
 COLORSENSOR color;
@@ -111,7 +119,6 @@ enum STATE {
     AIR,
     DOWN, 
     STIR,
-    SOAP,
     MEASURE,
     DEPLOYMENT,
     UP,

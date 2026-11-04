@@ -22,7 +22,7 @@ _PI.setGains(Kp,Ki,Kd, N);
 _PI.setRef(ref);
 _en.setup(Enable, GPIO_MODE_OUTPUT, GPIO_FLOATING);
 _lpwm.setup(LPWM, GPIO_MODE_OUTPUT, GPIO_FLOATING);
-_PWM.setup(RPWM, 0, 0, LEDC_TIMER_12_BIT, 5000);
+_PWM.setup(RPWM, 0, 0, LEDC_TIMER_12_BIT, 5000, LEDC_TIMER_1);
 _lpwm.set(0);
 _en.set(1);
 _buffersize = buffersize;
@@ -50,6 +50,7 @@ return true;
 };
 
 void viscosimeter::update(){
+    _running = true;
     _enc.update();
     float rpm = _enc.getRPM(RPMtype::FILTERED);
     float u = _PI.calculate(rpm);
@@ -60,6 +61,7 @@ void viscosimeter::update(){
 };
 
 void viscosimeter::stop(){
+    _running = false;
     _PWM.setDuty(0);
     _PI.reset();
     _PI.setRef(_ref);
@@ -100,6 +102,7 @@ float viscosimeter::vscoMeas(bool soapok, bool airok){
     
     
 void viscosimeter::lavarvsco(){
+    _running = true;
     _PI.setRef(150.0f);
     _enc.update();
     float rpm = _enc.getRPM(RPMtype::FILTERED);
@@ -108,6 +111,7 @@ void viscosimeter::lavarvsco(){
 }
 
 void viscosimeter::revolvervsco(){
+    _running = true;
     _PI.setRef(160.0f);
     _enc.update();
     float rpm = _enc.getRPM(RPMtype::FILTERED);
@@ -123,3 +127,11 @@ bool viscosimeter::setRef(float NewREF){
     }
     return false;
 }
+
+float viscosimeter::getRPM(){
+    // Con el motor detenido nadie llama update(), asi que medimos aqui
+    if (!_running)
+        _enc.update();
+    return _enc.getRPM(RPMtype::FILTERED);
+}
+float viscosimeter::getIntegral() { return _PI.getCorrection(corrections::I); }

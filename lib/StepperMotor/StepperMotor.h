@@ -9,8 +9,8 @@
 #define STEPPER_PPR 200
 
 enum STEPPER_DIR {
-    up,
-    down
+    down,
+    up
 };
 
 enum STATE_STEPPER {

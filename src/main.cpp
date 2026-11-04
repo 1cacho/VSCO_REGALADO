@@ -7,18 +7,23 @@ extern "C" void app_main()
     termometer.setup(TERMOMETER_PIN);
     //uart.setup(115200, UART_NUM_0, TX_PIN, RX_PIN, 256);
     push.setup(PUSH_PIN, GPIO_MODE_INPUT, GPIO_PULLDOWN_ONLY);
-    color.setup(COLOR_PIN, S2_PIN, S3_PIN, RGB_PINS, RGB_CHANNELS);
+    //color.setup(COLOR_PIN, S2_PIN, S3_PIN, RGB_PINS, RGB_CHANNELS);
     fan.setup(FAN_PIN);
     timer.setup(onSegundoCallback, "Cronometro1Min");
-    push.setup(PUSH_PIN, GPIO_MODE_INPUT, GPIO_FLOATING);
     push.addInterrupt(GPIO_INTR_POSEDGE, onPushCallback, 200000);
-    vsco.setup(50, EncoderA, EncoderB, Enable, LPWM, RPWM, controller::PI, discretizationtype::Tustin, Kp, Ki, 0.0f, 0.0f, RefRPM);
+    calpush.setup(CAL_PIN, GPIO_MODE_INPUT, GPIO_PULLUP_ONLY);
+    calpush.addInterrupt(GPIO_INTR_NEGEDGE, onCalCallback, 200000);
 
+    vsco.setup(50, EncoderA, EncoderB, Enable, LPWM, RPWM, controller::PI, discretizationtype::Tustin, Kp, Ki, 0.0f, 0.0f, RefRPM);
+    TickType_t last = xTaskGetTickCount();
     while (true)
     {
         current_time_ms = esp_timer_get_time() / 1000;
-        bool push_clicked = !push.interruptAvailable();
+        bool push_clicked = push.interruptAvailable();
+        bool cal_clicked  = calpush.interruptAvailable();
 
+
+        
         if (termometer.askTemperature())
         {
             termometer_time_ms = current_time_ms;
@@ -31,9 +36,12 @@ extern "C" void app_main()
                 temp_real = (float)temp_escalada / 10000.0f;
             }
         }
-        if (50 < (current_time_ms - send_time_ms))
+        if (poll_frequency < (current_time_ms - send_time_ms))
         {       
         send_time_ms = current_time_ms;
+        rpm = vsco.getRPM();
+        corrinteg = vsco.getIntegral();
+
         printf("%d, Temp: %.1f, RPM: %.1f, Visc: %.2f, Int: %.2f\n",
         current_state, temp_real, rpm, meas, corrinteg);
         }
@@ -47,7 +55,7 @@ extern "C" void app_main()
                 rgb_out[R] = 1048576;
                 rgb_out[G] = 1048576;
                 rgb_out[B] = 0;
-                color.display(rgb_out);
+                //color.display(rgb_out);
                 vsco.stop();
 
                 sprintf(txBuffer, "Awaiting for sample \n %s", txMeasurements);
@@ -57,13 +65,18 @@ extern "C" void app_main()
                 current_state = PLACEMENT;
                 new_state = true;
             }
+            else if(cal_clicked){
+                calibrando = true;
+                current_state = PLACEMENT;
+                new_state = true;
+            }
             break;
 
         case PLACEMENT:
             if (new_state) {
                 new_state = false;
                 sprintf(txBuffer, "Ensure sample placement \n %s", txMeasurements);
-                color.blink(rgb_out);
+                //color.blink(rgb_out);
             }
             if (push_clicked) {
                 new_state = true;
@@ -90,7 +103,7 @@ extern "C" void app_main()
         if (new_state) {
             new_state = false;
             //printf(txBuffer, "Lowering \n %s", txMeasurements);
-            color.blink(rgb_out);
+            //color.blink(rgb_out);
             stepper_time_ms = stepper.move(150, STEPPER_PPR, down);
             prev_time_ms = current_time_ms;
             }
@@ -113,34 +126,14 @@ extern "C" void app_main()
             rgb_out[R] = 1048576;
             rgb_out [G] = 0;
             rgb_out [B] = 0;
-            color.blink(rgb_out);
+            //color.blink(rgb_out);
             prev_time_ms = current_time_ms;
         }
         vsco.revolvervsco();
         if (30000 < (current_time_ms - prev_time_ms)) {
             vsco.stop();
-            current_state = SOAP;
-            new_state = true;
-        }
-        break;
-
-        case SOAP:
-        if (new_state) {
-            new_state = false;
-            //reference measure soap
-            rgb_out[R] = 1048576;
-            rgb_out [G] = 0;
-            rgb_out [B] = 0;
-            color.blink(rgb_out);
-            prev_time_ms = current_time_ms;
-        }
-        vsco.update();
-        if (10000 < (current_time_ms - prev_time_ms)) {
-            max = vsco.vscoMax();
-            soapok = true;
             current_state = MEASURE;
             new_state = true;
-            vsco.stop();
         }
         break;
 
@@ -152,7 +145,13 @@ extern "C" void app_main()
         }
         vsco.update();
         if (10000 < (current_time_ms - prev_time_ms)) {
-            meas = vsco.vscoMeas(soapok, airok);
+            if(calibrando){
+
+                max = vsco.vscoMax();
+                soapok = true;
+            } else {
+                meas = vsco.vscoMeas(soapok, airok);
+            }
             current_state = DEPLOYMENT;
             new_state = true;
             vsco.stop();
@@ -165,7 +164,7 @@ extern "C" void app_main()
             rgb_out[R] = 0;
             rgb_out [G] = 1048576;
             rgb_out [B] = 0;
-            color.display (rgb_out);
+            //color.display (rgb_out);
             //measurement ready print 
             prev_time_ms = current_time_ms;
         }
@@ -190,7 +189,7 @@ extern "C" void app_main()
                 rgb_out[R] = 0;
                 rgb_out [G] = 0;
                 rgb_out [B] = 0;
-                color.display (rgb_out);
+                //color.display (rgb_out);
             }
         }
         break;
@@ -270,11 +269,10 @@ extern "C" void app_main()
         case RESTART:
         if (new_state) {
             min = 0;
-            max = 0;
+            calibrando = false;
             meas = 0;
             rpm = 0.0f;
             airok = false;
-            soapok = false;
             new_state = true;
             current_state = IDLE;
             prev_time_ms  = 0;
@@ -283,6 +281,7 @@ extern "C" void app_main()
 
         }
 
-        vTaskDelay(1);
+        vTaskDelayUntil(&last, pdMS_TO_TICKS(sampletime/1000));   // 20000/1000 = 20 ms
+
     }
 }

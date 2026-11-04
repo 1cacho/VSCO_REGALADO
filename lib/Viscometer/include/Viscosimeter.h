@@ -24,6 +24,9 @@ class viscosimeter{
     void lavarvsco();
     void revolvervsco();
     bool setRef(float NewREF);
+    float getRPM();
+    float getIntegral();
+
     
     private:
     uint8_t _buffersize;
@@ -52,6 +55,7 @@ class viscosimeter{
     float _min;
     float _maxvisc = 1600;
     float _minvisc = 0.018;
+    bool _running = false;   // true mientras el control mueve el motor
 
     Control _PI;
     Encoder _enc;
