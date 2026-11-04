@@ -34,7 +34,9 @@ private:
     SimpleGPIO dir;
     SimplePWM pul;
     SimpleTimer timer;
-    TimerConfig _stepper_timer_config;
+    TimerConfig _stepper_timer_config{
+        .timer = LEDC_TIMER_2
+    };
 };
 
 

@@ -20,7 +20,7 @@
 #include "RGB.h"
 
 
-#define poll_frequency 200
+#define poll_frequency 20
 
 //nema 
 STEPPERMOTOR stepper;
@@ -76,6 +76,7 @@ uint8_t RGB_PINS [3] = {22, 23, 25};
 uint8_t RGB_CHANNELS[3] = {4, 5, 6};
 RGB rgb;
 TimerConfig _timer_config_rgb;
+
 
 //fan
 DCMOTOR fan;

@@ -2,7 +2,7 @@
 
 extern "C" void app_main()
 {
-
+    esp_task_wdt_deinit();
     stepper.setup(STEPPER_DIR_PIN, STEPPER_PUL_PIN, STEPPER_CHANNEL);
     termometer.setup(TERMOMETER_PIN);
     //uart.setup(115200, UART_NUM_0, TX_PIN, RX_PIN, 256);
@@ -16,7 +16,6 @@ extern "C" void app_main()
     rgb.setUp(RGB_PINS, RGB_CHANNELS,  &_timer_config_rgb, 0);
 
     vsco.setup(50, EncoderA, EncoderB, Enable, LPWM, RPWM, controller::PI, discretizationtype::Tustin, Kp, Ki, 0.0f, 0.0f, RefRPM);
-    TickType_t last = xTaskGetTickCount();
     while (true)
     {
         current_time_ms = esp_timer_get_time() / 1000;
@@ -75,8 +74,9 @@ extern "C" void app_main()
             if (new_state) {
                 new_state = false;
                 sprintf(txBuffer, "Ensure sample placement \n %s", txMeasurements);
-                rgb.blink(255,255,0, 500000);
+
             }
+            rgb.blink(255,255,0, 500000);
             if (push_clicked) {
                 new_state = true;
                 // La referencia de aire solo se mide al calibrar o si todavia no existe
@@ -125,9 +125,9 @@ extern "C" void app_main()
         if (new_state) {
             new_state = false;
             //print Mixing sample
-            rgb.blink(255,0,0,500000);
             prev_time_ms = current_time_ms;
         }
+        rgb.blink(255,0,0,500000);
         vsco.revolvervsco();
         if (30000 < (current_time_ms - prev_time_ms)) {
             vsco.stop();
