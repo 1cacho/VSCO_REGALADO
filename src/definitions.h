@@ -18,6 +18,8 @@
 #include "Control.h"
 #include "Viscosimeter.h"
 #include "RGB.h"
+#include "LCD.h"
+#include "Potentiometer.h"
 
 
 #define poll_frequency 20
@@ -82,6 +84,17 @@ TimerConfig _timer_config_rgb;
 //fan
 DCMOTOR fan;
 #define FAN_PIN 21
+
+//LCD con Potenciometro
+#define LCD_SDA_PIN 17
+#define LCD_SCL_PIN 16
+LCD lcd;
+#define POT_INC_PIN 15
+#define POT_UD_PIN 2
+POTENTIOMETER contrast;
+int contrast_base = 15;       // Posicion del pot a temperatura ambiente
+#define TEMP_REFERENCE 23.8
+char lcd_text[32];
 
 //timer
 SimpleTimer timer;

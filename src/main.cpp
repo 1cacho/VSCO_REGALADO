@@ -9,6 +9,9 @@ extern "C" void app_main()
     push.setup(PUSH_PIN, GPIO_MODE_INPUT, GPIO_PULLDOWN_ONLY);
     //color.setup(COLOR_PIN, S2_PIN, S3_PIN, RGB_PINS, RGB_CHANNELS);
     fan.setup(FAN_PIN);
+    contrast.setup(POT_INC_PIN, POT_UD_PIN);
+    contrast.set(contrast_base);
+    lcd.setup(LCD_SDA_PIN, LCD_SCL_PIN);
     timer.setup(onSegundoCallback, "Cronometro1Min");
     push.addInterrupt(GPIO_INTR_POSEDGE, onPushCallback, 200000);
     calpush.setup(CAL_PIN, GPIO_MODE_INPUT, GPIO_PULLUP_ONLY);
@@ -41,6 +44,11 @@ extern "C" void app_main()
                 temp_real = (float)temp_escalada / 10000.0f;
             }
             waiting_temp = false; // Libera el candado para pedir la siguiente lectura
+
+            // Contraste de la LCD segun la temperatura
+            contrast.set(contrast_base - 2 * (temp_real - TEMP_REFERENCE));
+            sprintf(lcd_text, "Temp: %.1f C", temp_real);
+            lcd.printLine(0, lcd_text);
         }
         if (poll_frequency < (current_time_ms - send_time_ms))
         {
@@ -64,9 +72,15 @@ extern "C" void app_main()
                 vsco.stop();
                 if (!airok) {
                 //print instruction to press yellow button, no air reference yet
+                lcd.printLine(1, "Yellow btn to");
+                lcd.printLine(2, "calibrate");
+                }
+                else if (!soapok) {
                 }
                 else {
                 //print instruction to press green button to start measurement
+                lcd.printLine(1, "Green btn to ");
+                lcd.printLine(2, "start measurement");
                 }
             }
 
@@ -85,8 +99,15 @@ extern "C" void app_main()
         case PLACEMENT:
             if (new_state) {
                 new_state = false;
-                //sprintf(txBuffer, "Ensure sample placement \n %s", txMeasurements);
-
+                if (!airok or !soapok) {
+                    lcd.printLine(1, "Place max sample");
+                    lcd.printLine(2, "and press green");
+                }
+                else {
+                    lcd.printLine(1, "Place any sample");
+                    lcd.printLine(2, "and press green");
+                }
+                
             }
             rgb.blink(255,255,0, 500000);
             if (push_clicked) {
@@ -100,6 +121,8 @@ extern "C" void app_main()
         if (new_state) {
             new_state = false;
             //reference measure air WAIT
+            lcd.printLine(1, "Air reference, wait");
+            lcd.printLine(2, "");
             stepper_time_ms = stepper.move(115, STEPPER_PPR, down);
             prev_time_ms = current_time_ms;
         }
@@ -119,6 +142,7 @@ extern "C" void app_main()
         if (new_state) {
             new_state = false;
             //ascending, wait
+            lcd.printLine(1, "Ascending, wait");
             stepper_time_ms = stepper.move(115, STEPPER_PPR, up);
             prev_time_ms = current_time_ms;
         }
@@ -132,6 +156,7 @@ extern "C" void app_main()
         if (new_state) {
             new_state = false;
             //printf(txBuffer, "Lowering \n %s", txMeasurements);
+            lcd.printLine(1, "Lowering probe");
             //color.blink(rgb_out);
             stepper_time_ms = stepper.move(115, STEPPER_PPR, down);
             prev_time_ms = current_time_ms;
@@ -139,6 +164,8 @@ extern "C" void app_main()
         if (stepper_time_ms < (current_time_ms - prev_time_ms)) {
             rgb.setColor(0, 255, 0);
             //make sure to center the sample
+            lcd.printLine(1, "Center sample");
+            lcd.printLine(2, "Then press green");
             if (push_clicked) {
                 new_state = true;
                 current_state = STIR;
@@ -151,6 +178,8 @@ extern "C" void app_main()
         if (new_state) {
             new_state = false;
             //print Mixing sample
+            lcd.printLine(1, "Mixing sample");
+            lcd.printLine(2, "");
             prev_time_ms = current_time_ms;
         }
         rgb.blink(255,0,0,500000);
@@ -164,7 +193,13 @@ extern "C" void app_main()
 
         case MEASURE:
         if (new_state) {
-            //obtaining viscosity
+            if (!airok or !soapok) {
+                lcd.printLine(1, "Measuring max ref");
+            }
+            else {
+                //print instruction to press green button to start measurement
+                lcd.printLine(1, "Measuring viscosity");
+            }
             new_state = false;   
             prev_time_ms = current_time_ms;
         }
@@ -187,7 +222,10 @@ extern "C" void app_main()
         if (new_state) {
             new_state = false;
             rgb.setColor(0,255,0);
-            //measurement ready print 
+            //measurement ready print
+            lcd.printLine(1, "Measurement ready");
+            sprintf(lcd_text, "Visc: %.2f cP", meas);
+            lcd.printLine(3, lcd_text);
             prev_time_ms = current_time_ms;
         }
         if (7000 < (current_time_ms - prev_time_ms)) {
@@ -202,9 +240,11 @@ extern "C" void app_main()
             stepper_time_ms = stepper.move (115, STEPPER_PPR, up);
             prev_time_ms = current_time_ms;
             //remove sample, elevating viscosimeter print
+            lcd.printLine(1, "Raising probe");
         }
         if ((stepper_time_ms) < (current_time_ms - prev_time_ms)) {
             //print take sample, go to wash station
+            lcd.printLine(1, "Take sample -> wash");
             if ((stepper_time_ms + 5000) < (current_time_ms - prev_time_ms)) {
                 current_state = CLEANING;
                 new_state = true;
@@ -217,12 +257,16 @@ extern "C" void app_main()
         if (new_state) {
             new_state = false;
         //print press when wash station ready
+            lcd.printLine(1, "Press green");
+            lcd.printLine(2, "when wash ready");
         }
         if (push_clicked&& !clean_en) {
             stepper_time_ms = stepper.move(115, STEPPER_PPR, down);
             prev_time_ms = current_time_ms;
             clean_en = true;
             // Lowering...
+            lcd.printLine(1, "Lowering probe");
+            lcd.printLine(2, "");
         }
 
         if (clean_en && (current_time_ms - prev_time_ms) > stepper_time_ms) {
@@ -231,15 +275,19 @@ extern "C" void app_main()
             if (!timer_started) {
                 timer.startPeriodic(1000000);
                 timer_started = true;
+                sec = 60;
                 //print washing 
+                lcd.printLine(1, "Washing");
             }
 
             if (timer.interruptAvailable()) {
-                sec++;
+                sec--;
                 //print washing and sec variable
+                sprintf(lcd_text, "Washing %d s", sec);
+                lcd.printLine(1, lcd_text);
             }
 
-            if (30 <= sec) {
+            if (0 == sec) {
                 vsco.stop();
                 timer.stopPeriodic();      
                 current_state = UP_CLEAN;  
@@ -255,6 +303,7 @@ extern "C" void app_main()
         if (new_state) {
             new_state = false;
             //ascending print
+            lcd.printLine(1, "Raising probe");
             stepper_time_ms = stepper.move(115, STEPPER_PPR, up);
             prev_time_ms = current_time_ms;
         }
@@ -269,14 +318,17 @@ extern "C" void app_main()
             new_state = false;
             fan.start();
             timer.startPeriodic(1000000);
-            sec = 0;
+            sec = 20;
             //print drying
+            lcd.printLine(1, "Drying");
         }
         if (timer.interruptAvailable()) {
-            sec ++;
+            sec --;
             //print timer
+            sprintf(lcd_text, "Drying %d s", sec);
+            lcd.printLine(1, lcd_text);
         }
-        if (20 <= sec) {
+        if (0 == sec) {
             fan.stop();
             current_state = RESTART;
             new_state = true;
